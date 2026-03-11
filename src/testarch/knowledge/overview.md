@@ -15,7 +15,7 @@ Writing Playwright utilities from scratch for every project leads to:
 
 `@seontechnologies/playwright-utils` provides:
 
-- **Production-tested utilities**: Production-tested utilities used in enterprise environments
+- **Production-tested**: Used in enterprise production environments
 - **Functional-first design**: Core logic as pure functions, fixtures for convenience
 - **Composable fixtures**: Use `mergeTests` to combine utilities
 - **TypeScript support**: Full type safety with generic types
