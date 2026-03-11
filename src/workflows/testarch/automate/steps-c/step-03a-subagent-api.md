@@ -102,9 +102,19 @@ test.describe('[Feature] API Tests', () => {
 
 ### 1.5 Provider Source Scrutiny (CDC Only)
 
-**CRITICAL**: Before generating ANY Pact consumer interaction, perform provider source scrutiny. Do NOT generate response matchers from consumer-side types alone — this is the #1 cause of contract verification failures.
+**CRITICAL**: Before generating ANY Pact consumer interaction, perform provider source scrutiny per the **Seven-Point Scrutiny Checklist** defined in `contract-testing.md`. Do NOT generate response matchers from consumer-side types alone — this is the #1 cause of contract verification failures.
 
-**Source priority**: Provider source code is most authoritative. When an OpenAPI/Swagger spec exists (`openapi.yaml`, `openapi.json`, `swagger.json`), use it as a complementary or alternative source — it documents the provider's contract explicitly and can be faster to parse than tracing through handler code. When both exist, cross-reference them; if they disagree, the source code wins.
+The seven points to verify for each interaction:
+
+1. Response shape
+2. Status codes
+3. Field names
+4. Enum values
+5. Required fields
+6. Data types
+7. Nested structures
+
+**Source priority**: Provider source code is most authoritative. When an OpenAPI/Swagger spec exists (`openapi.yaml`, `openapi.json`, `swagger.json`), use it as a complementary or alternative source — it documents the provider's contract explicitly and can be faster to parse than tracing through handler code. When both exist, cross-reference them; if they disagree, the source code wins. Document the discrepancy in the scrutiny evidence block (e.g., `OpenAPI shows 200 but handler returns 201; using handler behavior`) and flag it in the output JSON `summary` so it is discoverable by downstream consumers or audits.
 
 **Scrutiny Sequence** (for each endpoint in the coverage plan):
 
@@ -143,10 +153,11 @@ test.describe('[Feature] API Tests', () => {
  */
 ```
 
-6. **Graceful degradation** when provider source is not accessible:
-   - If `provider_endpoint_map` has entries marked `TODO`: Use OpenAPI spec or Pact Broker data if available
-   - If neither available: Generate from consumer types but use the TODO form of the mandatory comment: `// Provider endpoint: TODO — provider source not accessible, verify manually`
-   - Set `provider_scrutiny: "pending"` in output JSON
+6. **Graceful degradation** when provider source is not accessible (follows the canonical four-step protocol from `contract-testing.md`):
+   1. **OpenAPI/Swagger spec available**: Use the spec as the source of truth for response shapes, status codes, and field names
+   2. **Pact Broker available** (when `pact_mcp` is `"mcp"` in `subagentContext.config`): Use SmartBear MCP tools to fetch existing provider states and verified interactions as reference
+   3. **Neither available**: Generate from consumer types but use the TODO form of the mandatory comment: `// Provider endpoint: TODO — provider source not accessible, verify manually`. Set `provider_scrutiny: "pending"` in output JSON
+   4. **Never silently guess**: Document all assumptions in the scrutiny evidence block
 
 > ⚠️ **Anti-pattern**: Generating response matchers from consumer-side types alone. This produces contracts that reflect what the consumer _wishes_ the provider returns, not what it _actually_ returns. Always read provider source or OpenAPI spec first.
 

@@ -116,21 +116,29 @@ test.describe('[Story Name] API Tests (ATDD)', () => {
 
 ### 1.5 Provider Source Scrutiny for CDC in TDD Red Phase (If `use_pactjs_utils` Enabled)
 
-When generating Pact consumer contract tests in the ATDD red phase, provider scrutiny applies with TDD-specific rules:
+When generating Pact consumer contract tests in the ATDD red phase, provider scrutiny applies with TDD-specific rules. Apply the **Seven-Point Scrutiny Checklist** from `contract-testing.md` (Response shape, Status codes, Field names, Enum values, Required fields, Data types, Nested structures) for both existing and new endpoints.
 
 **If provider endpoint already exists** (extending an existing API):
 
 - READ the provider route handler, types, and validation schemas
-- Use actual provider response shapes, field names, status codes, and types
-- Add `// Provider endpoint:` comment and scrutiny evidence block
-- Generate the consumer contract with `test.skip()` wrapping the `executeTest` callback
+- Verify all seven scrutiny points against the provider source: Response shape, Status codes, Field names, Enum values, Required fields, Data types, Nested structures
+- Add `// Provider endpoint:` comment and scrutiny evidence block documenting findings for each point
+- Wrap the entire test function in `test.skip()` (so the whole test including `executeTest` is skipped), not just the callback
 
 **If provider endpoint is new** (TDD — endpoint not implemented yet):
 
 - Use acceptance criteria as the source of truth for expected behavior
+- Acceptance criteria should specify all seven scrutiny points where possible (status codes, field names, types, etc.) — note any gaps as assumptions in the evidence block
 - Add `// Provider endpoint: TODO — new endpoint, not yet implemented`
 - Document expected behavior from acceptance criteria in scrutiny evidence block
-- Generate the contract with `test.skip()` and realistic expectations from the story
+- Wrap the entire test function in `test.skip()` and use realistic expectations from the story
+
+**Graceful degradation when provider source is inaccessible:**
+
+1. **OpenAPI/Swagger spec available**: Use the spec as the source of truth for response shapes, status codes, and field names
+2. **Pact Broker available** (when `pact_mcp` is `"mcp"`): Use SmartBear MCP tools to fetch existing provider states and verified interactions as reference
+3. **Neither available**: For new endpoints, use acceptance criteria; for existing endpoints, use consumer-side types. Mark with `// Provider endpoint: TODO — provider source not accessible, verify manually` and set `provider_scrutiny: "pending"` in output JSON
+4. **Never silently guess**: Document all assumptions in the scrutiny evidence block
 
 **Provider endpoint comments are MANDATORY** even in red-phase tests — they document the intent.
 
