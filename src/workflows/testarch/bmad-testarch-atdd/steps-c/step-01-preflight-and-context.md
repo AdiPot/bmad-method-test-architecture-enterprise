@@ -73,7 +73,14 @@ If any are missing: **HALT** and notify the user.
 - Identify affected components and integrations
 - Derive and store `story_key` from the story filename when available (for BMM stories, this is the filename without `.md`, e.g. `1-2-user-authentication`)
 - Derive and store `story_id` from story metadata, the H1 heading, or the filename when available (for BMM stories, this is typically `{epic_num}.{story_num}`)
-- If a filename-based `story_key` is not available, create a stable slug from the story title and use that for `{outputFile}`
+- If a filename-based `story_key` is not available, create and persist a stable slug from the story title:
+  - lowercase the title
+  - collapse runs of whitespace to single `-`
+  - strip all non-alphanumeric and non-hyphen characters
+  - trim leading/trailing hyphens
+  - truncate to a safe max length (64 chars)
+- Use that slug as `story_key` and for `{outputFile}` basename so all checklist and handoff paths stay consistent
+- If `story_id` is still unavailable after metadata/H1/filename parsing, set it to the final `story_key` so `story_id` is never empty
 - Preserve `{story_file}` as a tracked artifact path for later handoff into BMM `dev-story`
 
 ---
@@ -220,6 +227,7 @@ Summarize loaded inputs and confirm with the user. Then proceed.
 - Set `storyKey` to `{story_key}`
 - Set `storyFile` to `{story_file}`
 - Set `atddChecklistPath` to `{outputFile}`
+- Initialize `generatedTestFiles` to `[]`
 - Set `inputDocuments` to the list of artifact paths loaded in this step (e.g., knowledge fragments, test design documents, configuration files)
 
 Load next step: `{nextStepFile}`

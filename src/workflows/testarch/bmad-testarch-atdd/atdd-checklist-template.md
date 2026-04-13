@@ -7,7 +7,10 @@ storyId: '{story_id}'
 storyKey: '{story_key}'
 storyFile: '{story_file}'
 atddChecklistPath: '{test_artifacts}/atdd-checklist-{story_key}.md'
-generatedTestFiles: []
+generatedTestFiles:
+  - '{api_test_file_path}'
+  - '{e2e_test_file_path}'
+  - '{component_test_file_path}'
 inputDocuments: []
 ---
 

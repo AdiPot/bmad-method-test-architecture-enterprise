@@ -85,6 +85,11 @@ Report:
   stepsCompleted: ['step-05-validate-and-complete']
   lastStep: 'step-05-validate-and-complete'
   lastSaved: '{date}'
+  storyId: '{story_id}'
+  storyKey: '{story_key}'
+  storyFile: '{story_file}'
+  atddChecklistPath: '{outputFile}'
+  generatedTestFiles: []
   ---
   ```
 
@@ -94,6 +99,8 @@ Report:
   - Add `'step-05-validate-and-complete'` to `stepsCompleted` array (only if not already present)
   - Set `lastStep: 'step-05-validate-and-complete'`
   - Set `lastSaved: '{date}'`
+  - Ensure `storyId`, `storyKey`, `storyFile`, and `atddChecklistPath` are present and populated
+  - Ensure `generatedTestFiles` remains populated with the deterministic list of present generated test paths
   - Append this step's output to the appropriate section.
 
 ## 🚨 SYSTEM SUCCESS/FAILURE METRICS:

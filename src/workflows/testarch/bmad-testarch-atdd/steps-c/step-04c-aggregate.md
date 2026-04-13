@@ -196,9 +196,9 @@ Note: More complete fixtures will be needed when moving to green phase.
 
 {list all acceptance criteria with test coverage}
 
-## Next Steps (TDD Green Phase)
+## Next Steps (Task-by-Task Activation)
 
-After implementing the feature:
+During implementation of each task:
 
 1. Remove `test.skip()` from the current test file or scenario
 2. Run tests: `npm test`
@@ -223,7 +223,7 @@ UI components to implement:
 fs.writeFileSync(`{test_artifacts}/atdd-checklist-{story_key}.md`, checklistContent, 'utf8');
 ```
 
-**If `{story_file}` exists and is writable, link artifacts back into the story:**
+**If `{story_file}` exists and is writable, attempt to link artifacts back into the story:**
 
 - Add or update a `### ATDD Artifacts` subsection under `## Dev Notes`
 - Record:
@@ -232,7 +232,8 @@ fs.writeFileSync(`{test_artifacts}/atdd-checklist-{story_key}.md`, checklistCont
   - `E2E tests: {e2e_test_file_path}` when present
   - `Component tests: {component_test_file_path}` when present
 - Preserve all other story content verbatim
-- If the story file cannot be updated safely, keep the checklist's manual handoff instructions intact
+- The checklist template already contains the manual handoff instructions if story linking is not possible
+- If the story file cannot be updated safely, continue without failing the workflow and keep the checklist's manual handoff instructions intact
 
 ---
 
@@ -346,6 +347,11 @@ Proceed to Step 5 when:
   stepsCompleted: ['step-04c-aggregate']
   lastStep: 'step-04c-aggregate'
   lastSaved: '{date}'
+  storyId: '{story_id}'
+  storyKey: '{story_key}'
+  storyFile: '{story_file}'
+  atddChecklistPath: '{outputFile}'
+  generatedTestFiles: []
   ---
   ```
 
@@ -355,6 +361,11 @@ Proceed to Step 5 when:
   - Add `'step-04c-aggregate'` to `stepsCompleted` array (only if not already present)
   - Set `lastStep: 'step-04c-aggregate'`
   - Set `lastSaved: '{date}'`
+  - Set `storyId` to `{story_id}`
+  - Set `storyKey` to `{story_key}`
+  - Set `storyFile` to `{story_file}`
+  - Set `atddChecklistPath` to `{outputFile}`
+  - Set `generatedTestFiles` deterministically to the list of present test paths in this order: API, E2E, Component (omit blanks / N/A values)
   - Append this step's output to the appropriate section.
 
 Load next step: `{nextStepFile}`
