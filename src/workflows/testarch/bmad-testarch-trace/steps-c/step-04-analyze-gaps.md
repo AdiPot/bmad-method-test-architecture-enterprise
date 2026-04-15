@@ -166,7 +166,48 @@ Heuristics are advisory but must influence gap severity and recommendations, esp
 **Based on gap analysis:**
 
 ```javascript
-const resolvedCoverageBasis = runtime.getResolvedCoverageBasis?.() || '{coverage_basis}';
+const progressDoc = fs.existsSync('{outputFile}') ? fs.readFileSync('{outputFile}', 'utf8') : '';
+const progressFrontmatterMatch = progressDoc.match(/^---\n([\s\S]*?)\n---/);
+const progressFrontmatter = progressFrontmatterMatch ? yaml.parse(progressFrontmatterMatch[1]) : {};
+
+const isUnresolved = (value) => typeof value === 'string' && value.startsWith('{') && value.endsWith('}');
+const normalizeResolvedToken = (value) => {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized || normalized === 'auto' || isUnresolved(normalized)) return null;
+  return normalized;
+};
+const firstResolvedToken = (...values) => {
+  for (const value of values) {
+    const normalized = normalizeResolvedToken(value);
+    if (normalized) return normalized;
+  }
+  return null;
+};
+
+const oracleResolutionMode =
+  firstResolvedToken(runtime.getOracleResolutionMode?.(), progressFrontmatter.oracleResolutionMode) || 'formal_requirements';
+const resolvedCoverageBasis =
+  firstResolvedToken(runtime.getResolvedCoverageBasis?.(), progressFrontmatter.coverageBasis) ||
+  {
+    formal_requirements: 'acceptance_criteria',
+    spec_artifact: 'openapi_endpoints',
+    external_pointer: 'acceptance_criteria',
+    synthetic_source: 'user_journeys',
+  }[oracleResolutionMode] ||
+  'acceptance_criteria';
+const resolvedOracleConfidence =
+  firstResolvedToken(runtime.getResolvedOracleConfidence?.(), progressFrontmatter.oracleConfidence) ||
+  {
+    formal_requirements: 'high',
+    spec_artifact: 'high',
+    external_pointer: 'medium',
+    synthetic_source: 'medium',
+  }[oracleResolutionMode] ||
+  'medium';
+const oracleSources = runtime.getOracleSources?.() || progressFrontmatter.oracleSources || [];
+const externalPointerStatus =
+  firstResolvedToken(runtime.getExternalPointerStatus?.(), progressFrontmatter.externalPointerStatus) || 'not_used';
 const recommendations = [];
 
 // Critical gaps (P0)
@@ -243,7 +284,7 @@ recommendations.push({
   requirements: [],
 });
 
-if (['synthetic_requirements', 'user_journeys'].includes(resolvedCoverageBasis)) {
+if (oracleResolutionMode === 'synthetic_source') {
   recommendations.push({
     priority: 'MEDIUM',
     action: 'Promote inferred journeys into formal acceptance criteria when the team confirms they reflect intended behavior',
@@ -384,11 +425,6 @@ const deduplicatedTestInventory = {
 
 const extractedTargetId = runtime.getTraceTargetId?.() || null;
 const extractedTargetLabel = runtime.getTraceTargetLabel?.() || null;
-const resolvedCoverageBasis = runtime.getResolvedCoverageBasis?.() || '{coverage_basis}';
-const resolvedOracleConfidence = runtime.getResolvedOracleConfidence?.() || '{summary_confidence}';
-const oracleResolutionMode = runtime.getOracleResolutionMode?.() || 'formal_requirements';
-const oracleSources = runtime.getOracleSources?.() || [];
-const externalPointerStatus = runtime.getExternalPointerStatus?.() || 'not_used';
 const traceTarget = {
   type: '{gate_type}',
   id: extractedTargetId, // story_id / epic_num / release_version / hotfix identifier from Step 1
@@ -416,7 +452,7 @@ const coverageMatrix = {
     confidence: resolvedOracleConfidence,
     sources: oracleSources,
     external_pointer_status: externalPointerStatus,
-    synthetic: ['synthetic_requirements', 'user_journeys'].includes(resolvedCoverageBasis),
+    synthetic: oracleResolutionMode === 'synthetic_source',
   },
 
   requirements: traceabilityMatrix, // Full matrix from Step 3

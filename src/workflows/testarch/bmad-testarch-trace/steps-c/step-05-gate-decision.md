@@ -81,13 +81,33 @@ const hasP1Requirements = (stats.priority_breakdown.P1.total || 0) > 0;
 const effectiveP1Coverage = hasP1Requirements ? p1Coverage : 100;
 const overallCoverage = stats.overall_coverage_percentage;
 const criticalGaps = coverageMatrix.gap_analysis.critical_gaps.length;
-const coverageBasis = String(coverageMatrix.coverage_basis || '{coverage_basis}')
-  .trim()
-  .toLowerCase();
-const oracleConfidence = String(coverageMatrix.oracle?.confidence || coverageMatrix.summary_confidence || '{summary_confidence}')
-  .trim()
-  .toLowerCase();
-const syntheticOracle = ['synthetic_requirements', 'user_journeys'].includes(coverageBasis);
+const isUnresolved = (value) => typeof value === 'string' && value.startsWith('{') && value.endsWith('}');
+const normalizeResolvedToken = (value) => {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized || normalized === 'auto' || isUnresolved(normalized)) return null;
+  return normalized;
+};
+const oracleResolutionMode = normalizeResolvedToken(coverageMatrix.oracle?.resolution_mode) || 'formal_requirements';
+const coverageBasis =
+  normalizeResolvedToken(coverageMatrix.coverage_basis) ||
+  {
+    formal_requirements: 'acceptance_criteria',
+    spec_artifact: 'openapi_endpoints',
+    external_pointer: 'acceptance_criteria',
+    synthetic_source: 'user_journeys',
+  }[oracleResolutionMode] ||
+  'acceptance_criteria';
+const oracleConfidence =
+  normalizeResolvedToken(coverageMatrix.oracle?.confidence || coverageMatrix.summary_confidence) ||
+  {
+    formal_requirements: 'high',
+    spec_artifact: 'high',
+    external_pointer: 'medium',
+    synthetic_source: 'medium',
+  }[oracleResolutionMode] ||
+  'medium';
+const syntheticOracle = coverageMatrix.oracle?.synthetic === true || ['synthetic_requirements', 'user_journeys'].includes(coverageBasis);
 
 const normalizeBoolean = (value, defaultValue = true) => {
   if (typeof value === 'string') {
@@ -99,7 +119,6 @@ const normalizeBoolean = (value, defaultValue = true) => {
   return Boolean(value);
 };
 
-const isUnresolved = (v) => typeof v === 'string' && v.startsWith('{') && v.endsWith('}');
 const collectionMode = String(!isUnresolved(coverageMatrix.collection_mode) ? coverageMatrix.collection_mode : 'contract_static')
   .trim()
   .toLowerCase();
@@ -318,9 +337,15 @@ const heuristicCounts = coverageMatrix.coverage_heuristics?.counts || {};
 const endpointGapCount = heuristicCounts.endpoints_without_tests ?? 0;
 const authGapCount = heuristicCounts.auth_missing_negative_paths ?? 0;
 const errorPathGapCount = heuristicCounts.happy_path_only_criteria ?? 0;
-const uiJourneyGapCount = heuristicCounts.ui_journeys_without_e2e ?? 0;
-const uiStateGapCount = heuristicCounts.ui_states_missing_coverage ?? 0;
+const uiJourneyGapCount = heuristicCounts.ui_journeys_without_e2e;
+const uiStateGapCount = heuristicCounts.ui_states_missing_coverage;
 const sourceSha = process.env.GITHUB_SHA || runtime.getSourceSha?.() || '';
+const mapOptionalHeuristicStatus = (count, applicable) => {
+  if (!applicable) return 'not_applicable';
+  if (typeof count !== 'number' || Number.isNaN(count)) return 'unknown';
+  if (count === 0) return 'present';
+  return count <= 2 ? 'partial' : 'none';
+};
 
 const e2eTraceSummary = {
   schema_version: 1,
@@ -329,19 +354,19 @@ const e2eTraceSummary = {
   repo: '{project_name}',
   collection_mode: collectionMode,
   collection_status: collectionStatus,
-  coverage_basis: coverageMatrix.coverage_basis || '{coverage_basis}',
+  coverage_basis: coverageBasis,
   source_sha: sourceSha,
   gate_eligible: gateEligible,
   target: coverageMatrix.trace_target || { type: '{gate_type}', id: null, label: null },
   decision_mode: '{decision_mode}',
   evaluator: '{user_name}',
-  confidence: coverageMatrix.summary_confidence || '{summary_confidence}',
+  confidence: oracleConfidence,
   oracle: {
-    resolution_mode: coverageMatrix.oracle?.resolution_mode || 'formal_requirements',
-    confidence: coverageMatrix.oracle?.confidence || coverageMatrix.summary_confidence || '{summary_confidence}',
+    resolution_mode: oracleResolutionMode,
+    confidence: oracleConfidence,
     sources: coverageMatrix.oracle?.sources || [],
     external_pointer_status: coverageMatrix.oracle?.external_pointer_status || 'not_used',
-    synthetic: coverageMatrix.oracle?.synthetic === true,
+    synthetic: syntheticOracle,
   },
 
   coverage_statistics: {
@@ -394,8 +419,8 @@ const e2eTraceSummary = {
     endpoint_gaps: endpointGapCount,
     auth_negative_path_status: authGapCount === 0 ? 'present' : authGapCount <= 2 ? 'partial' : 'none',
     error_path_status: errorPathGapCount === 0 ? 'present' : errorPathGapCount <= 2 ? 'partial' : 'none',
-    ui_journey_status: uiJourneyGapCount === 0 ? 'present' : uiJourneyGapCount <= 2 ? 'partial' : 'none',
-    ui_state_status: uiStateGapCount === 0 ? 'present' : uiStateGapCount <= 2 ? 'partial' : 'none',
+    ui_journey_status: mapOptionalHeuristicStatus(uiJourneyGapCount, syntheticOracle),
+    ui_state_status: mapOptionalHeuristicStatus(uiStateGapCount, syntheticOracle),
   },
 
   blockers: blockers,

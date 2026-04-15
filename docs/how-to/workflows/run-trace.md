@@ -81,12 +81,12 @@ TEA will first look for the best available coverage oracle.
 **Example Response:**
 
 ```
-Requirements:
+Coverage sources:
 - story-profile-management.md (acceptance criteria)
 - test-design-epic-1.md (test priorities)
 ```
 
-If none of those exist, TEA should infer provisional journeys from routes/pages/screens, major user actions, auth flows, and important UI states, then trace tests against those inferred journeys with an explicit confidence level.
+If none of those exist and `allow_synthetic_oracle` is enabled, TEA should infer provisional journeys from routes/pages/screens, major user actions, auth flows, and important UI states, then trace tests against those inferred journeys with an explicit confidence level.
 
 ### 4. Specify Test Location
 

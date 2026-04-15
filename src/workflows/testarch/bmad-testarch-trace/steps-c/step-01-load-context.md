@@ -62,7 +62,7 @@ Resolve the oracle in this order:
 3. **External pointers third**
    - Placeholder files that point to external trackers or docs such as Jira, Linear, Confluence, shared docs, or other systems of record
    - Follow the pointer automatically only when a compatible adapter/plugin/MCP is available in the active runtime
-   - Record whether the pointer was resolved, skipped, or unavailable
+   - Record `externalPointerStatus` as one of: `not_used`, `resolved`, `skipped`, or `unavailable`
 
 4. **Synthetic oracle last**
    - If no formal oracle exists and `allow_synthetic_oracle` is enabled, inspect `{source_dir}` to infer a provisional trace target
@@ -81,14 +81,13 @@ Resolve the oracle in this order:
      - `P2`: secondary workflows and edge scenarios
      - `P3`: low-risk polish or optional flows
 
-Record the resolved oracle metadata in step output:
+Record the resolved oracle metadata in step output/frontmatter using consistent keys:
 
-- `coverage_basis`
-- `oracle_resolution_mode` (`formal_requirements` | `spec_artifact` | `external_pointer` | `synthetic_source`)
-- `oracle_confidence` (`high` | `medium` | `low`)
-- `oracle_sources`
-- `oracle_items`
-- `external_pointer_status`
+- `coverageBasis` (`acceptance_criteria` | `synthetic_requirements` | `openapi_endpoints` | `user_journeys`) — the type of oracle selected for coverage tracing
+- `oracleResolutionMode` (`formal_requirements` | `spec_artifact` | `external_pointer` | `synthetic_source`) — how the oracle was discovered/resolved
+- `oracleConfidence` (`high` | `medium` | `low`) — confidence in the resolved oracle as a coverage source
+- `oracleSources` — list of artifact paths, URIs, or references used to resolve the oracle
+- `externalPointerStatus` (`not_used` | `resolved` | `skipped` | `unavailable`) — status of external pointer resolution when pointer files are present
 
 If none of the four oracle types can be resolved, **HALT** and request the smallest missing clarification needed to continue.
 
