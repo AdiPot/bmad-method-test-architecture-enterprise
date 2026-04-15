@@ -2,7 +2,7 @@
 name: 'step-04-analyze-gaps'
 description: 'Complete Phase 1 with adaptive orchestration (agent-team, subagent, or sequential)'
 nextStepFile: './step-05-gate-decision.md'
-outputFile: '{test_artifacts}/traceability-report.md'
+outputFile: '{test_artifacts}/traceability-matrix.md'
 tempOutputFile: '/tmp/tea-trace-coverage-matrix-{{timestamp}}.json'
 ---
 
@@ -253,6 +253,113 @@ const p3CoveragePercentage = safePct(p3Covered, p3Total);
 
 ---
 
+### 4b. Build Deduplicated Test Inventory and Trace Metadata
+
+Persist the unique discovered tests in Phase 1 so Step 5 does not need to reconstruct counts from per-requirement mappings.
+
+```javascript
+const coverageEligibleStatuses = new Set(['FULL', 'PARTIAL', 'UNIT-ONLY', 'INTEGRATION-ONLY']);
+const byLevel = {
+  e2e: { tests: 0, criteria_covered: 0 },
+  api: { tests: 0, criteria_covered: 0 },
+  component: { tests: 0, criteria_covered: 0 },
+  unit: { tests: 0, criteria_covered: 0 },
+};
+
+const normalizeTestStatus = (test) => {
+  const explicitStatus = String(test.status || '')
+    .trim()
+    .toLowerCase();
+  if (['skipped', 'pending', 'fixme'].includes(explicitStatus)) return explicitStatus;
+  if (test.fixme === true) return 'fixme';
+  if (test.pending === true) return 'pending';
+  if (test.skipped === true) return 'skipped';
+  return 'active';
+};
+
+const uniqueTests = new Map();
+(traceabilityMatrix || []).forEach((req) => {
+  (req.tests || []).forEach((test, index) => {
+    const stableId =
+      test.id ||
+      [test.file, test.title || test.name, test.line ?? index]
+        .filter((value) => value !== undefined && value !== null && value !== '')
+        .join(':') ||
+      `${req.id}:${index}`;
+
+    if (!uniqueTests.has(stableId)) {
+      const status = normalizeTestStatus(test);
+      uniqueTests.set(stableId, {
+        id: stableId,
+        file: test.file || '',
+        line: test.line ?? null,
+        title: test.title || test.name || stableId,
+        level: String(test.level || '')
+          .trim()
+          .toLowerCase(),
+        status: status,
+        skipped: status === 'skipped',
+        fixme: status === 'fixme',
+        pending: status === 'pending',
+        blocker_reason: test.skip_reason || test.blocker_reason || test.fixme_reason || test.pending_reason || '',
+      });
+    }
+  });
+});
+
+[...uniqueTests.values()].forEach((test) => {
+  if (byLevel[test.level]) byLevel[test.level].tests += 1;
+});
+
+(traceabilityMatrix || []).forEach((req) => {
+  if (!coverageEligibleStatuses.has(req.coverage)) return;
+  const requirementLevels = new Set(
+    (req.tests || [])
+      .map((test) =>
+        String(test.level || '')
+          .trim()
+          .toLowerCase(),
+      )
+      .filter((level) => byLevel[level]),
+  );
+  requirementLevels.forEach((level) => {
+    byLevel[level].criteria_covered += 1;
+  });
+});
+
+const deduplicatedTests = [...uniqueTests.values()];
+const deduplicatedTestInventory = {
+  summary: {
+    files: [...new Set(deduplicatedTests.map((test) => test.file).filter(Boolean))].length,
+    cases: deduplicatedTests.length,
+    skipped_cases: deduplicatedTests.filter((test) => test.skipped).length,
+    fixme_cases: deduplicatedTests.filter((test) => test.fixme).length,
+    pending_cases: deduplicatedTests.filter((test) => test.pending).length,
+    by_level: byLevel,
+  },
+  tests: deduplicatedTests,
+  blockers: deduplicatedTests
+    .filter((test) => ['skipped', 'pending', 'fixme'].includes(test.status))
+    .map((test) => ({
+      id: test.id,
+      severity: test.status === 'skipped' ? 'high' : 'medium',
+      reason: test.blocker_reason || `Test marked ${test.status} during trace collection`,
+      test_file: test.file,
+      test_title: test.title,
+    })),
+};
+
+const extractedTargetId = runtime.getTraceTargetId?.() || null;
+const extractedTargetLabel = runtime.getTraceTargetLabel?.() || null;
+const traceTarget = {
+  type: '{gate_type}',
+  id: extractedTargetId, // story_id / epic_num / release_version / hotfix identifier from Step 1
+  label: extractedTargetLabel || null,
+};
+```
+
+---
+
 ### 5. Generate Complete Coverage Matrix
 
 **Compile all Phase 1 outputs:**
@@ -261,6 +368,11 @@ const p3CoveragePercentage = safePct(p3Covered, p3Total);
 const coverageMatrix = {
   phase: 'PHASE_1_COMPLETE',
   generated_at: new Date().toISOString(),
+  trace_target: traceTarget,
+  collection_mode: '{collection_mode}',
+  allow_gate: '{allow_gate}',
+  coverage_basis: '{coverage_basis}',
+  summary_confidence: '{summary_confidence}',
 
   requirements: traceabilityMatrix, // Full matrix from Step 3
 
@@ -295,6 +407,8 @@ const coverageMatrix = {
     counts: heuristicGapCounts,
   },
 
+  test_inventory: deduplicatedTestInventory,
+  blockers: deduplicatedTestInventory.blockers,
   recommendations: recommendations,
 };
 ```
@@ -311,6 +425,16 @@ fs.writeFileSync(outputPath, JSON.stringify(coverageMatrix, null, 2), 'utf8');
 
 console.log(`✅ Phase 1 Complete: Coverage matrix saved to ${outputPath}`);
 ```
+
+**Record the resolved path in the progress document** so Step 5 can read the exact same file rather than re-evaluating the timestamp expression:
+
+After writing the temp file, update the YAML frontmatter in `{outputFile}` to include:
+
+```yaml
+tempCoverageMatrixPath: '<resolved outputPath>'
+```
+
+Step 5 reads `tempCoverageMatrixPath` from the frontmatter first; falls back to reconstructing `{tempOutputFile}` only when the key is absent.
 
 ---
 
