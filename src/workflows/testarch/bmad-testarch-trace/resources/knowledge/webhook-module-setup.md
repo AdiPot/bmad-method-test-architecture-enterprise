@@ -84,14 +84,14 @@ test.use({ webhookConfig: { cleanupStrategy: 'full-reset' } });
 
 ## Cleanup Strategy Decision
 
-| Strategy                 | Behaviour                                                                            | When to choose                                               |
-| ------------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| `'full-reset'` (default) | Calls `provider.resetJournal()` — wipes the entire mock server journal               | Safe only with a single worker or serial execution           |
-| `'matched-only'`         | Calls `provider.deleteById(id)` for each webhook matched by `waitFor`/`waitForCount` | Required for `fullyParallel: true`; safe with shared journal |
+| Strategy                 | Behaviour                                                                            | When to choose                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `'full-reset'` (default) | Calls `provider.resetJournal()` — wipes the entire mock server journal               | Safe only for serial execution or when each worker has an isolated provider instance                                 |
+| `'matched-only'`         | Calls `provider.deleteById(id)` for each webhook matched by `waitFor`/`waitForCount` | Required for `fullyParallel: true` with a shared journal **when the provider supports `deleteById`** (e.g. WireMock) |
 
-**The race condition under `fullyParallel: true`**: Worker A finishes and calls `resetJournal()`. Worker B is mid-poll waiting for its webhook. Worker A's reset just deleted Worker B's webhook — the poll times out with `WebhookTimeoutError`. Use `matched-only` to avoid this.
+**The race condition under `fullyParallel: true`**: Worker A finishes and calls `resetJournal()`. Worker B is mid-poll waiting for its webhook. Worker A's reset just deleted Worker B's webhook — the poll times out with `WebhookTimeoutError`. Use `matched-only` to avoid this — but only when the provider supports `deleteById`.
 
-**MockServer and Mockoon limitation**: Neither supports `deleteById` on log entries — their implementations are no-ops. Isolation is achieved by the `startedAt` timestamp filter — each registry only sees webhooks received after it was created. For these providers, `full-reset` is the right choice for explicit cleanup.
+**MockServer and Mockoon limitation**: Neither supports `deleteById` — their implementations are no-ops. The `startedAt` timestamp filter isolates _reads_ inside `waitFor`/`waitForCount`, but `cleanup()` with `full-reset` still calls `resetJournal()`, which wipes the entire journal. This means the teardown race exists for these providers too under `fullyParallel: true`. For parallel suites with MockServer or Mockoon, either run serially (`workers: 1`) or provision an isolated mock server instance per worker.
 
 ## Fixture Lifecycle
 

@@ -142,12 +142,12 @@ interface WebhookProvider {
 
 ## Provider Comparison
 
-| Provider                  | deleteById | resetJournal | Recommended strategy           | API endpoint           |
-| ------------------------- | ---------- | ------------ | ------------------------------ | ---------------------- |
-| WireMockWebhookProvider   | ✅ Yes     | ✅ Yes       | `matched-only` (parallel-safe) | `/__admin/requests`    |
-| MockServerWebhookProvider | ❌ No-op   | ✅ Yes       | `full-reset`                   | `/mockserver/retrieve` |
-| MockoonWebhookProvider    | ❌ No-op   | ✅ Yes       | `full-reset`                   | `/mockoon-admin/logs`  |
-| Custom                    | Depends    | Depends      | Depends                        | Your API               |
+| Provider                  | deleteById | resetJournal | Parallel-safe (shared journal)      | Recommended strategy                                  | API endpoint           |
+| ------------------------- | ---------- | ------------ | ----------------------------------- | ----------------------------------------------------- | ---------------------- |
+| WireMockWebhookProvider   | ✅ Yes     | ✅ Yes       | ✅ Yes (`matched-only`)             | `matched-only`                                        | `/__admin/requests`    |
+| MockServerWebhookProvider | ❌ No-op   | ✅ Yes       | ⚠️ No — serial or isolated instance | `full-reset` (serial or isolated provider per worker) | `/mockserver/retrieve` |
+| MockoonWebhookProvider    | ❌ No-op   | ✅ Yes       | ⚠️ No — serial or isolated instance | `full-reset` (serial or isolated provider per worker) | `/mockoon-admin/logs`  |
+| Custom                    | Depends    | Depends      | Depends on implementation           | Depends                                               | Your API               |
 
 ## Related Fragments
 

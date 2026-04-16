@@ -100,7 +100,7 @@ When a system uses webhooks, verify the test suite covers:
 - [ ] Happy path for each event type that has an external subscriber
 - [ ] Template factories scoped by entity ID (parallel-safe)
 - [ ] Drain pattern applied to all sequential event assertions
-- [ ] `matched-only` cleanup strategy for `fullyParallel: true` suites
+- [ ] Cleanup strategy matches provider capability: `matched-only` for providers that support `deleteById` (e.g. WireMock); `full-reset` with serial execution or an isolated provider instance per worker for MockServer/Mockoon
 - [ ] Timeout values appropriate for the delivery pipeline latency (Kafka pipelines need 15s+)
 - [ ] `WebhookTimeoutError` imported and tested in negative path coverage
 - [ ] Mock server (WireMock/MockServer/Mockoon) in Docker Compose / test infra

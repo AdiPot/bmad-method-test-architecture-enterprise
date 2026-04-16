@@ -19,7 +19,7 @@ The playwright-utils approach:
 - **Typed matchers**: `matchField`, `matchPartial`, `matchPredicate` — all must pass (AND semantics); matchers never throw on missing paths
 - **Rich timeout errors**: `WebhookTimeoutError` carries `totalReceived`, `receivedWebhooks`, and `matcherDetails` so you can see what arrived vs. what was expected
 - **Isolation via `startedAt`**: Each `WebhookRegistry` instance records its creation timestamp; polling only fetches webhooks received after that point, preventing leakage from prior tests
-- **Two cleanup strategies**: `full-reset` (resets entire journal) and `matched-only` (deletes only matched webhooks — safe for parallel workers)
+- **Two cleanup strategies**: `full-reset` (resets entire journal) and `matched-only` (deletes only matched webhooks — parallel-safe when the provider supports delete-by-ID, e.g. WireMock)
 
 ## When to Use Webhook Tests
 

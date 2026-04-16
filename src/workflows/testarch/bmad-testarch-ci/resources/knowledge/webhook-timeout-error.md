@@ -85,6 +85,11 @@ const undeliveredDelete = webhookTemplate<{
 
 const [waitResult] = await Promise.allSettled([webhookRegistry.waitFor(undeliveredDelete)]);
 
+expect(waitResult.status).toBe('rejected');
+if (waitResult.status !== 'rejected') {
+  throw new Error('Expected webhook wait to reject with WebhookTimeoutError');
+}
+
 const error = waitResult.reason as WebhookTimeoutError;
 expect(error).toBeInstanceOf(WebhookTimeoutError);
 expect(error.totalReceived).toBeGreaterThanOrEqual(1);

@@ -81,6 +81,7 @@ expect(webhooks).toHaveLength(2);
 const receivedIds = webhooks.map((w) => w.body.data.id);
 expect(receivedIds).toContain(id1);
 expect(receivedIds).toContain(id2);
+expect(new Set(receivedIds).size).toBe(2); // guard against the same ID delivered twice
 ```
 
 ### Example 4: getReceived — query without waiting
@@ -112,7 +113,7 @@ type WebhookQueryFilter = {
 };
 ```
 
-Note: `getReceived` is a direct passthrough to the provider — it does **not** automatically apply the `startedAt` filter. Only `waitFor` and `waitForCount` apply the since-filter internally during polling. If you want to restrict `getReceived` to webhooks from this test's window, pass `{ since: webhookRegistry.startedAt }` explicitly.
+Note: `getReceived` is a direct passthrough to the provider — it does **not** automatically apply the `startedAt` filter. Only `waitFor` and `waitForCount` apply the since-filter internally during polling. If you need to scope a manual `getReceived` call to this test's time window, record your own timestamp before the action under test and pass `{ since: myTimestamp }` explicitly.
 
 ## Parallel Worker Safety
 
