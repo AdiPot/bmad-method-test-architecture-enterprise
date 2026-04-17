@@ -75,12 +75,27 @@ if (coverageMatrix.phase !== 'PHASE_1_COMPLETE') {
 
 ```javascript
 const stats = coverageMatrix.coverage_statistics;
-const p0Coverage = stats.priority_breakdown.P0.percentage;
-const p1Coverage = stats.priority_breakdown.P1.percentage;
-const hasP1Requirements = (stats.priority_breakdown.P1.total || 0) > 0;
+if (
+  !stats ||
+  typeof stats !== 'object' ||
+  !stats.priority_breakdown ||
+  !stats.priority_breakdown.P0 ||
+  !stats.priority_breakdown.P1 ||
+  !stats.priority_breakdown.P2 ||
+  !stats.priority_breakdown.P3
+) {
+  throw new Error(
+    'Phase 1 coverage_statistics.priority_breakdown is missing or incomplete. ' +
+      'Step 4 must emit P0-P3 totals and coverage percentages before Step 5 can proceed.',
+  );
+}
+const priorityBreakdown = stats.priority_breakdown;
+const p0Coverage = priorityBreakdown.P0.percentage;
+const p1Coverage = priorityBreakdown.P1.percentage;
+const hasP1Requirements = (priorityBreakdown.P1.total || 0) > 0;
 const effectiveP1Coverage = hasP1Requirements ? p1Coverage : 100;
 const overallCoverage = stats.overall_coverage_percentage;
-const criticalGaps = coverageMatrix.gap_analysis.critical_gaps.length;
+const criticalGaps = (coverageMatrix.gap_analysis?.critical_gaps || []).length;
 const isUnresolved = (value) => typeof value === 'string' && value.startsWith('{') && value.endsWith('}');
 const normalizeResolvedToken = (value) => {
   if (value === undefined || value === null) return null;
@@ -224,7 +239,7 @@ const gateReport = {
       }
     : null,
 
-  uncovered_requirements: coverageMatrix.gap_analysis.critical_gaps.concat(coverageMatrix.gap_analysis.high_gaps),
+  uncovered_requirements: (coverageMatrix.gap_analysis?.critical_gaps || []).concat(coverageMatrix.gap_analysis?.high_gaps || []),
 
   recommendations: coverageMatrix.recommendations,
 };
@@ -356,7 +371,7 @@ const e2eTraceSummary = {
   collection_status: collectionStatus,
   inventory_basis: coverageBasis,
   gate_basis: gateBasis,
-  source_sha: sourceSha || undefined,
+  source_sha: sourceSha || '',
   target: coverageMatrix.trace_target || { type: '{gate_type}', id: null, label: null },
   decision_mode: '{decision_mode}',
   evaluator: '{user_name}',
@@ -377,24 +392,24 @@ const e2eTraceSummary = {
     },
     priority_breakdown: {
       P0: {
-        total: stats.priority_breakdown.P0.total,
-        covered: stats.priority_breakdown.P0.covered,
-        pct: stats.priority_breakdown.P0.percentage,
+        total: priorityBreakdown.P0.total,
+        covered: priorityBreakdown.P0.covered,
+        pct: priorityBreakdown.P0.percentage,
       },
       P1: {
-        total: stats.priority_breakdown.P1.total,
-        covered: stats.priority_breakdown.P1.covered,
-        pct: stats.priority_breakdown.P1.percentage,
+        total: priorityBreakdown.P1.total,
+        covered: priorityBreakdown.P1.covered,
+        pct: priorityBreakdown.P1.percentage,
       },
       P2: {
-        total: stats.priority_breakdown.P2.total,
-        covered: stats.priority_breakdown.P2.covered,
-        pct: stats.priority_breakdown.P2.percentage,
+        total: priorityBreakdown.P2.total,
+        covered: priorityBreakdown.P2.covered,
+        pct: priorityBreakdown.P2.percentage,
       },
       P3: {
-        total: stats.priority_breakdown.P3.total,
-        covered: stats.priority_breakdown.P3.covered,
-        pct: stats.priority_breakdown.P3.percentage,
+        total: priorityBreakdown.P3.total,
+        covered: priorityBreakdown.P3.covered,
+        pct: priorityBreakdown.P3.percentage,
       },
     },
     by_level: testInventory.by_level,
